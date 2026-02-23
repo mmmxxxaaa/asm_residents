@@ -3,6 +3,24 @@
 .code
 org 100h
 
+ATTR_NORMAL      equ 0Fh          ; белый на чёрном
+SYM_A   equ 'A'
+SYM_B   equ 'B'
+SYM_C   equ 'C'
+SYM_D   equ 'D'
+SYM_E   equ 'E'
+SYM_F   equ 'F'
+SYM_I   equ 'I'
+SYM_L   equ 'L'
+SYM_O   equ 'O'
+SYM_P   equ 'P'
+SYM_S   equ 'S'
+SYM_T   equ 'T'
+SYM_X   equ 'X'
+SYM_Z   equ 'Z'
+
+SYM_EQU equ '='
+
 Start:
             dd  90909090h
             mov ax, 3508h       ; AH = 35h (получить вектор), AL = 08h (номер прерывания)
@@ -83,132 +101,132 @@ New08_tyt_yzhe_ne_skataesh proc
 
             push 0b800h
             pop es
-            mov di, (80d*5+30d)*2       ;выводим где-то в середине
+            mov di, (80d*5+15d)*2       ;выводим где-то в середине
 
             ; --- АХ ---
-            mov ax, 0F41h
+            mov ax, (ATTR_NORMAL shl 8) or SYM_A
             stosw
-            mov ax, 0F58h
+            mov ax, (ATTR_NORMAL shl 8) or SYM_X
             stosw
-            mov ax, 0F3Dh
+            mov ax, (ATTR_NORMAL shl 8) or SYM_EQU
             stosw
             mov bx, [bp+18]
             call HexOut
             add di, 160-14         ; переход на след строку
 
             ; --- BX ---
-            mov ax, 0F42h       ; B
+            mov ax, (ATTR_NORMAL shl 8) or SYM_B
             stosw
-            mov ax, 0F58h       ; X
+            mov ax, (ATTR_NORMAL shl 8) or SYM_X
             stosw
-            mov ax, 0F3Dh       ; =
+            mov ax, (ATTR_NORMAL shl 8) or SYM_EQU
             stosw
             mov bx, [bp+16]     ; значение BX
             call HexOut
             add di, 160-14
 
             ; --- CX ---
-            mov ax, 0F43h       ; C
+            mov ax, (ATTR_NORMAL shl 8) or SYM_C
             stosw
-            mov ax, 0F58h       ; X
+            mov ax, (ATTR_NORMAL shl 8) or SYM_X
             stosw
-            mov ax, 0F3Dh       ; =
+            mov ax, (ATTR_NORMAL shl 8) or SYM_EQU
             stosw
             mov bx, [bp+14]     ; значение CX
             call HexOut
             add di, 160-14
 
             ; --- DX ---
-            mov ax, 0F44h       ; D
+            mov ax, (ATTR_NORMAL shl 8) or SYM_D
             stosw
-            mov ax, 0F58h       ; X
+            mov ax, (ATTR_NORMAL shl 8) or SYM_X
             stosw
-            mov ax, 0F3Dh       ; =
+            mov ax, (ATTR_NORMAL shl 8) or SYM_EQU
             stosw
             mov bx, [bp+12]      ; значение DX
             call HexOut
             add di, 160-14
 
             ; --- SI---
-            mov ax, 0F53h  ; 'S'
+            mov ax, (ATTR_NORMAL shl 8) or SYM_S
             stosw
-            mov ax, 0F49h  ; 'I'
+            mov ax, (ATTR_NORMAL shl 8) or SYM_I
             stosw
-            mov ax, 0F3Dh
+            mov ax, (ATTR_NORMAL shl 8) or SYM_EQU
             stosw
-            mov bx, [bp+10] ; SI
+            mov bx, [bp+10]
             call HexOut
             add di, 160-14
 
             ;;~~~ ВТОРОЙ СТОЛБЕЦ ~~~
-            mov di, (80d*5+40d)*2
+            mov di, (80d*5+25d)*2
 
             ; DI
-            mov ax, 0F44h
+            mov ax, (ATTR_NORMAL shl 8) or SYM_D
             stosw
-            mov ax, 0F49h
+            mov ax, (ATTR_NORMAL shl 8) or SYM_I
             stosw
-            mov ax, 0F3Dh
+            mov ax, (ATTR_NORMAL shl 8) or SYM_EQU
             stosw
             mov bx, [bp+8]
             call HexOut
             add di, 160-14       ; переход на следующую строку (правая колонка)
 
             ; BP
-            mov ax, 0F42h
+            mov ax, (ATTR_NORMAL shl 8) or SYM_B
             stosw
-            mov ax, 0F50h
+            mov ax, (ATTR_NORMAL shl 8) or SYM_P
             stosw
-            mov ax, 0F3Dh
+            mov ax, (ATTR_NORMAL shl 8) or SYM_EQU
             stosw
             mov bx, [bp+6]
             call HexOut
             add di, 160-14
 
             ; DS
-            mov ax, 0F44h
+            mov ax, (ATTR_NORMAL shl 8) or SYM_D
             stosw
-            mov ax, 0F53h
+            mov ax, (ATTR_NORMAL shl 8) or SYM_S
             stosw
-            mov ax, 0F3Dh
+            mov ax, (ATTR_NORMAL shl 8) or SYM_EQU
             stosw
             mov bx, [bp+4]
             call HexOut
             add di, 160-14
 
             ; ES
-            mov ax, 0F45h
+            mov ax, (ATTR_NORMAL shl 8) or SYM_E
             stosw
-            mov ax, 0F53h
+            mov ax, (ATTR_NORMAL shl 8) or SYM_S
             stosw
-            mov ax, 0F3Dh
+            mov ax, (ATTR_NORMAL shl 8) or SYM_EQU
             stosw
             mov bx, [bp+2]
             call HexOut
             add di, 160-14
 
             ; SS
-            mov ax, 0F53h
+            mov ax, (ATTR_NORMAL shl 8) or SYM_S
             stosw
-            mov ax, 0F53h
+            mov ax, (ATTR_NORMAL shl 8) or SYM_S
             stosw
-            mov ax, 0F3Dh
+            mov ax, (ATTR_NORMAL shl 8) or SYM_EQU
             stosw
             mov bx, [bp]
             call HexOut
 
             ; --- ТРЕТИЙ СТОЛБЕЦ ---
-            mov di, (80d*5+50d)*2
+            mov di, (80d*5+35d)*2
 
             ; SP (исходный указатель стека)
             ; если бы просто вывели текущий SP, то получили бы адрес, указывающий на последний помещённый в стек элемент,
             ; а не исходное значение SP прерванной программы.
             ; чтобы восстановить исходный SP, нужно прибавить к текущему SP (он = BP) количество байт, помещённых в стек с момента прерывания
-            mov ax, 0F53h
+            mov ax, (ATTR_NORMAL shl 8) or SYM_S
             stosw
-            mov ax, 0F50h
+            mov ax, (ATTR_NORMAL shl 8) or SYM_P
             stosw
-            mov ax, 0F3Dh
+            mov ax, (ATTR_NORMAL shl 8) or SYM_EQU
             stosw
             mov bx, bp
             add bx, 26          ; bp + 20 (наши push) + 6 (автоматические)
@@ -216,28 +234,28 @@ New08_tyt_yzhe_ne_skataesh proc
             add di, 160-14
 
             ; CS
-            mov ax, 0F43h
+            mov ax, (ATTR_NORMAL shl 8) or SYM_C
             stosw
-            mov ax, 0F53h
+            mov ax, (ATTR_NORMAL shl 8) or SYM_S
             stosw
-            mov ax, 0F3Dh
+            mov ax, (ATTR_NORMAL shl 8) or SYM_EQU
             stosw
             mov bx, [bp+22]
             call HexOut
             add di, 160-14
 
             ; IP
-            mov ax, 0F49h
+            mov ax, (ATTR_NORMAL shl 8) or SYM_I
             stosw
-            mov ax, 0F50h
+            mov ax, (ATTR_NORMAL shl 8) or SYM_P
             stosw
-            mov ax, 0F3Dh
+            mov ax, (ATTR_NORMAL shl 8) or SYM_EQU
             stosw
             mov bx, [bp+20]
             call HexOut
 
                         ; --- ЧЕТВЁРТЫЙ СТОЛБЕЦ (флаги) ---
-            mov di, (80d*5+60d)*2
+            mov di, (80d*5+45d)*2
             mov ax, [bp+24]
             push ax                      ; сохраняем в стеке, так как будем многократно использовать
 
@@ -247,8 +265,11 @@ New08_tyt_yzhe_ne_skataesh proc
             mov bx, ax
             and bx, 1
             add bl, '0'
-            mov ah, 0Fh                 ; атрибут
-            mov al, 'C'
+            mov ax, (ATTR_NORMAL shl 8) or SYM_C
+            stosw
+            mov ax, (ATTR_NORMAL shl 8) or SYM_F
+            stosw
+            mov ax, (ATTR_NORMAL shl 8) or SYM_EQU
             stosw
             mov al, bl
             stosw
@@ -261,12 +282,15 @@ New08_tyt_yzhe_ne_skataesh proc
             shr bx, 2
             and bx, 1
             add bl, '0'
-            mov ah, 0Fh
-            mov al, 'P'
+            mov ax, (ATTR_NORMAL shl 8) or SYM_P
+            stosw
+            mov ax, (ATTR_NORMAL shl 8) or SYM_F
+            stosw
+            mov ax, (ATTR_NORMAL shl 8) or SYM_EQU
             stosw
             mov al, bl
             stosw
-            add di, 160-10                 ; переход на следующую строку с учётом выведенных символов
+            add di, 160-18                 ; переход на следующую строку с учётом выведенных символов
 
             ; AF (бит 4)
             pop ax
@@ -275,8 +299,11 @@ New08_tyt_yzhe_ne_skataesh proc
             shr bx, 4
             and bx, 1
             add bl, '0'
-            mov ah, 0Fh
-            mov al, 'A'
+            mov ax, (ATTR_NORMAL shl 8) or SYM_A
+            stosw
+            mov ax, (ATTR_NORMAL shl 8) or SYM_F
+            stosw
+            mov ax, (ATTR_NORMAL shl 8) or SYM_EQU
             stosw
             mov al, bl
             stosw
@@ -289,12 +316,15 @@ New08_tyt_yzhe_ne_skataesh proc
             shr bx, 6
             and bx, 1
             add bl, '0'
-            mov ah, 0Fh
-            mov al, 'Z'
+            mov ax, (ATTR_NORMAL shl 8) or SYM_Z
+            stosw
+            mov ax, (ATTR_NORMAL shl 8) or SYM_F
+            stosw
+            mov ax, (ATTR_NORMAL shl 8) or SYM_EQU
             stosw
             mov al, bl
             stosw
-            add di, 160-10
+            add di, 160-18
 
             ; SF (бит 7)
             pop ax
@@ -303,8 +333,11 @@ New08_tyt_yzhe_ne_skataesh proc
             shr bx, 7
             and bx, 1
             add bl, '0'
-            mov ah, 0Fh
-            mov al, 'S'
+            mov ax, (ATTR_NORMAL shl 8) or SYM_S
+            stosw
+            mov ax, (ATTR_NORMAL shl 8) or SYM_F
+            stosw
+            mov ax, (ATTR_NORMAL shl 8) or SYM_EQU
             stosw
             mov al, bl
             stosw
@@ -317,12 +350,15 @@ New08_tyt_yzhe_ne_skataesh proc
             shr bx, 8
             and bx, 1
             add bl, '0'
-            mov ah, 0Fh
-            mov al, 'T'
+            mov ax, (ATTR_NORMAL shl 8) or SYM_T
+            stosw
+            mov ax, (ATTR_NORMAL shl 8) or SYM_F
+            stosw
+            mov ax, (ATTR_NORMAL shl 8) or SYM_EQU
             stosw
             mov al, bl
             stosw
-            add di, 160-10
+            add di, 160-18
 
             ; IF (бит 9)
             pop ax
@@ -331,8 +367,11 @@ New08_tyt_yzhe_ne_skataesh proc
             shr bx, 9
             and bx, 1
             add bl, '0'
-            mov ah, 0Fh
-            mov al, 'I'
+            mov ax, (ATTR_NORMAL shl 8) or SYM_I
+            stosw
+            mov ax, (ATTR_NORMAL shl 8) or SYM_F
+            stosw
+            mov ax, (ATTR_NORMAL shl 8) or SYM_EQU
             stosw
             mov al, bl
             stosw
@@ -345,12 +384,15 @@ New08_tyt_yzhe_ne_skataesh proc
             shr bx, 10
             and bx, 1
             add bl, '0'
-            mov ah, 0Fh
-            mov al, 'D'
+            mov ax, (ATTR_NORMAL shl 8) or SYM_D
+            stosw
+            mov ax, (ATTR_NORMAL shl 8) or SYM_F
+            stosw
+            mov ax, (ATTR_NORMAL shl 8) or SYM_EQU
             stosw
             mov al, bl
             stosw
-            add di, 160-10
+            add di, 160-18
 
             ; OF (бит 11)
             pop ax                         ; последний раз извлекаем, не пушим обратно
@@ -358,8 +400,11 @@ New08_tyt_yzhe_ne_skataesh proc
             shr bx, 11
             and bx, 1
             add bl, '0'
-            mov ah, 0Fh
-            mov al, 'O'
+            mov ax, (ATTR_NORMAL shl 8) or SYM_O
+            stosw
+            mov ax, (ATTR_NORMAL shl 8) or SYM_F
+            stosw
+            mov ax, (ATTR_NORMAL shl 8) or SYM_EQU
             stosw
             mov al, bl
             stosw
