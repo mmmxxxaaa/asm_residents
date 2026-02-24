@@ -4,6 +4,9 @@
 org 100h
 
 ATTR_NORMAL      equ 0Fh          ; белый на чёрном
+SCANCODE_YO      equ 029h
+SCANCODE_EQUAL   equ 0Dh
+
 SYM_A   equ 'A'
 SYM_B   equ 'B'
 SYM_C   equ 'C'
@@ -22,20 +25,23 @@ SYM_Z   equ 'Z'
 SYM_EQU equ '='
 
 Start:
-            dd  90909090h
+            mov ax, 3509h
+            int 21h
+            mov word ptr cs:[old09Ofs], bx
+            mov word ptr cs:[old09Seg], es
+
             mov ax, 3508h       ; AH = 35h (получить вектор), AL = 08h (номер прерывания)
             int 21h             ; возвращает ES:BX = старый вектор
             mov word ptr offset old08Ofs, bx
             mov bx, es
             mov word ptr offset old08Seg, bx    ; сохранили смещение и сегмент
-            dd 90909090h
 
             ; --- устанавливаем свой обработчик ---
             push 0
             pop es                      ;ES = 0 (сегмент таблицы векторов прерываний)
-            mov bx, 4*08h               ;смещение вектора 08h в таблице (каждый вектор 4 байта)
+            mov bx, 4*09h               ;смещение вектора 08h в таблице (каждый вектор 4 байта)
             cli
-            mov es:[bx], offset New08_tyt_yzhe_ne_skataesh  ;запишем смещение нового обработчика
+            mov es:[bx], offset New09  ;запишем смещение нового обработчика
             mov ax, cs
             mov es:[bx+2], ax           ;+2, так как у нас little-endian
             sti
@@ -99,6 +105,10 @@ New08_tyt_yzhe_ne_skataesh proc
                             ; [bp+22] = cs
                             ; [bp+24] = flags
 
+            cmp byte ptr cs:[show_flag], 0
+            jne @@display_registers
+            jmp @@skip_display
+@@display_registers:
             push 0b800h
             pop es
             mov di, (80d*5+15d)*2       ;выводим где-то в середине
@@ -409,6 +419,7 @@ New08_tyt_yzhe_ne_skataesh proc
             mov al, bl
             stosw
 
+@@skip_display:
             mov al, 20h
             out 20h, al
 
@@ -420,6 +431,77 @@ old08Ofs:   dw 0
 old08Seg:   dw 0
 
             endp
-EOP:
 
+ClearTable proc
+            push ax bx cx dx si di ds es
+            push 0b800h
+            pop es
+            mov ax, (ATTR_NORMAL shl 8) or ' '
+            mov cx, 5
+            mov di, (80d*5 + 15d)*2              ; начальная позиция
+@@next_row:
+            push cx
+            mov cx, 46
+            rep stosw
+            add di, 160-46*2
+            pop cx
+            loop @@next_row
+            pop ds es di si dx cx bx ax
+            ret
+            endp
+
+New09       proc
+            push ax bx cx dx si di bp ds es ss
+            mov bp, sp
+
+            in al, 60h
+            cmp al, SCANCODE_YO
+            je @@check_yo
+            cmp al, SCANCODE_EQUAL
+            je @@check_equal
+            jmp @@skip
+
+@@check_yo:
+            test al, 80h
+            jnz @@skip
+            cmp byte ptr cs:[flag08inst], 0
+            jne @@already_set
+            push 0
+            pop es
+            mov bx, 4*08h
+            cli
+            mov es:[bx], offset New08_tyt_yzhe_ne_skataesh
+            mov ax, cs
+            mov es:[bx+2], ax
+            sti
+            mov byte ptr cs:[flag08inst], 1
+@@already_set:
+            mov byte ptr cs:[show_flag], 1
+            jmp @@skip
+@@check_equal:
+            test al, 80h
+            jnz @@skip
+            mov byte ptr cs:[show_flag], 0      ;выключаем отображение (DS в этот момент не равен сегменту кода TSR, надо явно указывать )
+            call ClearTable
+@@skip:
+            ; ---- EOI ----
+            in al, 61h
+            or al, 80h
+            out 61h, al
+            and al, not 80h
+            out 61h, al
+            mov al, 20h
+            out 20h, al
+
+            pop ss es ds bp di si dx cx bx ax
+            db 0EAh
+old09Ofs:   dw 0
+old09Seg:   dw 0
+
+New09       endp
+
+flag08inst db 0          ; 0 - ещё не установлен, 1 - уже установлен
+show_flag  db 0          ; 1 - таблица должна отображаться
+
+EOP:
 end         Start
