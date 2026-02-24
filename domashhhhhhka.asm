@@ -26,6 +26,13 @@ SYM_Z   equ 'Z'
 
 SYM_EQU equ '='
 
+BOX_TOP_LEFT     equ 0C9h   ; ╔
+BOX_TOP_RIGHT    equ 0BBh   ; ╗
+BOX_BOTTOM_LEFT  equ 0C8h   ; ╚
+BOX_BOTTOM_RIGHT equ 0BCh   ; ╝
+BOX_HORIZ        equ 0CDh   ; ═
+BOX_VERT         equ 0BAh   ; ║
+
 FRAME_TOP    equ 4
 FRAME_BOTTOM equ 10
 FRAME_LEFT   equ 14
@@ -88,7 +95,7 @@ HexOut      proc
             loop @@next_digit
             ret
 HexOut      endp
-
+;;//FIXME написать доки
 ClearTable proc
             push ax bx cx dx si di ds es
             push 0b800h
@@ -109,31 +116,31 @@ ClearTable proc
             endp
 
 DrawFrame   proc
-
             push ax bx cx dx si di ds es
+            call ClearTable
             push 0b800h
             pop es
             mov ah, COLOR_GREEN
 
             mov di, (FRAME_TOP*80 + FRAME_LEFT)*2
-            mov al, '+'
+            mov al, BOX_TOP_LEFT
             stosw
-            mov al, '-'
+            mov al, BOX_HORIZ
             mov cx, FRAME_RIGHT - FRAME_LEFT - 1
             rep stosw
-            mov al, '+'
+            mov al, BOX_TOP_RIGHT
             stosw
 
             mov di, (FRAME_BOTTOM*80 + FRAME_LEFT)*2
-            mov al, '+'
+            mov al, BOX_BOTTOM_LEFT
             stosw
-            mov al, '-'
+            mov al, BOX_HORIZ
             mov cx, FRAME_RIGHT - FRAME_LEFT - 1
             rep stosw
-            mov al, '+'
+            mov al, BOX_BOTTOM_RIGHT
             stosw
 
-            mov al, '|'
+            mov al, BOX_VERT
             mov di, (FRAME_TOP*80 + FRAME_LEFT)*2 + 160
             mov cx, FRAME_BOTTOM - FRAME_TOP - 1
 @@left:
