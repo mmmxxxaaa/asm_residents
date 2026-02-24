@@ -4,6 +4,8 @@
 org 100h
 
 ATTR_NORMAL      equ 0Fh          ; белый на чёрном
+COLOR_GREEN      equ 02h
+
 SCANCODE_YO      equ 029h
 SCANCODE_EQUAL   equ 0Dh
 
@@ -24,40 +26,42 @@ SYM_Z   equ 'Z'
 
 SYM_EQU equ '='
 
+FRAME_TOP    equ 4
+FRAME_BOTTOM equ 10
+FRAME_LEFT   equ 14
+FRAME_RIGHT  equ 54
+
 Start:
             mov ax, 3509h
             int 21h
             mov word ptr cs:[old09Ofs], bx
             mov word ptr cs:[old09Seg], es
 
-            mov ax, 3508h       ; AH = 35h (получить вектор), AL = 08h (номер прерывания)
-            int 21h             ; возвращает ES:BX = старый вектор
+            mov ax, 3508h                       ; AH = 35h (получить вектор), AL = 08h (номер прерывания)
+            int 21h                             ; возвращает ES:BX = старый вектор
             mov word ptr offset old08Ofs, bx
             mov bx, es
             mov word ptr offset old08Seg, bx    ; сохранили смещение и сегмент
 
             ; --- устанавливаем свой обработчик ---
             push 0
-            pop es                      ;ES = 0 (сегмент таблицы векторов прерываний)
-            mov bx, 4*09h               ;смещение вектора 08h в таблице (каждый вектор 4 байта)
+            pop es                              ;ES = 0 (сегмент таблицы векторов прерываний)
+            mov bx, 4*09h                       ;смещение вектора 08h в таблице (каждый вектор 4 байта)
             cli
-            mov es:[bx], offset New09  ;запишем смещение нового обработчика
+            mov es:[bx], offset New09           ;запишем смещение нового обработчика
             mov ax, cs
-            mov es:[bx+2], ax           ;+2, так как у нас little-endian
+            mov es:[bx+2], ax                   ;+2, так как у нас little-endian
             sti
 
             dd  90909090h
             int 08h
             dd  90909090h
 
-            mov ax, 3100h               ; функция DOS 31h (завершить программу, оставив её в памяти (TSR))
+            mov ax, 3100h                       ; функция DOS 31h (завершить программу, оставив её в памяти (TSR))
             mov dx, offset EOP
 
-            add dx, 15                     ; округление вверх до параграфа
+            add dx, 15                          ; округление вверх до параграфа
             shr dx, 4
-                                    ;Хуевое округление
-                                    ;shr dx, 4
-                                    ;inc dx                      ;нацело может не делиться
 
             int 21h
 
@@ -85,6 +89,68 @@ HexOut      proc
             ret
 HexOut      endp
 
+ClearTable proc
+            push ax bx cx dx si di ds es
+            push 0b800h
+            pop es
+            mov ax, (ATTR_NORMAL shl 8) or ' '
+            mov di, (FRAME_TOP*80 + FRAME_LEFT)*2
+            mov bx, FRAME_BOTTOM - FRAME_TOP + 1
+@@next_row:
+            push bx
+            mov cx, FRAME_RIGHT - FRAME_LEFT + 1
+            rep stosw
+            add di, 160 - (FRAME_RIGHT - FRAME_LEFT + 1)*2
+            pop bx
+            dec bx
+            jnz @@next_row
+            pop ds es di si dx cx bx ax
+            ret
+            endp
+
+DrawFrame   proc
+
+            push ax bx cx dx si di ds es
+            push 0b800h
+            pop es
+            mov ah, COLOR_GREEN
+
+            mov di, (FRAME_TOP*80 + FRAME_LEFT)*2
+            mov al, '+'
+            stosw
+            mov al, '-'
+            mov cx, FRAME_RIGHT - FRAME_LEFT - 1
+            rep stosw
+            mov al, '+'
+            stosw
+
+            mov di, (FRAME_BOTTOM*80 + FRAME_LEFT)*2
+            mov al, '+'
+            stosw
+            mov al, '-'
+            mov cx, FRAME_RIGHT - FRAME_LEFT - 1
+            rep stosw
+            mov al, '+'
+            stosw
+
+            mov al, '|'
+            mov di, (FRAME_TOP*80 + FRAME_LEFT)*2 + 160
+            mov cx, FRAME_BOTTOM - FRAME_TOP - 1
+@@left:
+            stosw
+            add di, 160-2
+            loop @@left
+
+            mov di, (FRAME_TOP*80 + FRAME_RIGHT)*2 + 160
+            mov cx, FRAME_BOTTOM - FRAME_TOP - 1
+@@right:
+            stosw
+            add di, 160 - 2
+            loop @@right
+
+            pop es ds di si dx cx bx ax
+            ret
+            endp
 
 New08_tyt_yzhe_ne_skataesh proc
             push ax bx cx dx si di bp ds es ss
@@ -111,7 +177,9 @@ New08_tyt_yzhe_ne_skataesh proc
 @@display_registers:
             push 0b800h
             pop es
-            mov di, (80d*5+15d)*2       ;выводим где-то в середине
+            call DrawFrame
+
+            mov di, (80d*5+15d)*2                   ;выводим где-то в середине
 
             ; --- АХ ---
             mov ax, (ATTR_NORMAL shl 8) or SYM_A
@@ -122,7 +190,7 @@ New08_tyt_yzhe_ne_skataesh proc
             stosw
             mov bx, [bp+18]
             call HexOut
-            add di, 160-14         ; переход на след строку
+            add di, 160-14                          ; переход на след строку
 
             ; --- BX ---
             mov ax, (ATTR_NORMAL shl 8) or SYM_B
@@ -131,7 +199,7 @@ New08_tyt_yzhe_ne_skataesh proc
             stosw
             mov ax, (ATTR_NORMAL shl 8) or SYM_EQU
             stosw
-            mov bx, [bp+16]     ; значение BX
+            mov bx, [bp+16]
             call HexOut
             add di, 160-14
 
@@ -142,7 +210,7 @@ New08_tyt_yzhe_ne_skataesh proc
             stosw
             mov ax, (ATTR_NORMAL shl 8) or SYM_EQU
             stosw
-            mov bx, [bp+14]     ; значение CX
+            mov bx, [bp+14]
             call HexOut
             add di, 160-14
 
@@ -153,7 +221,7 @@ New08_tyt_yzhe_ne_skataesh proc
             stosw
             mov ax, (ATTR_NORMAL shl 8) or SYM_EQU
             stosw
-            mov bx, [bp+12]      ; значение DX
+            mov bx, [bp+12]
             call HexOut
             add di, 160-14
 
@@ -430,24 +498,6 @@ New08_tyt_yzhe_ne_skataesh proc
 old08Ofs:   dw 0
 old08Seg:   dw 0
 
-            endp
-
-ClearTable proc
-            push ax bx cx dx si di ds es
-            push 0b800h
-            pop es
-            mov ax, (ATTR_NORMAL shl 8) or ' '
-            mov cx, 5
-            mov di, (80d*5 + 15d)*2              ; начальная позиция
-@@next_row:
-            push cx
-            mov cx, 46
-            rep stosw
-            add di, 160-46*2
-            pop cx
-            loop @@next_row
-            pop ds es di si dx cx bx ax
-            ret
             endp
 
 New09       proc
