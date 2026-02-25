@@ -182,6 +182,15 @@ DrawFrame   proc
             ret
             endp
 
+;-------------------------------------------------------------------------------
+; Descr: выводит строку вида "XX=xxxx" в видеопамять по адресу ES:DI
+; Entry: AL = первая буква
+;        AH = вторая буква
+;        BX = 16-битное значение для вывода в шестнадцатеричном виде
+;        ES:DI = текущая позиция в видеопамяти
+; Exit:  DI перемещён на начало следующей строки в том же столбце
+; Destr: AX, BX, CX, DX, DI
+;-------------------------------------------------------------------------------
 PrintReg proc
 
         push ax
@@ -216,8 +225,45 @@ PrintReg proc
 
         endp
 
+;-------------------------------------------------------------------------------
+; Descr: выводит один флаг в формате "XX=0" или "XX=1"
+; Entry: AL = первая буква (например, 'C' для CF)
+;        AH = вторая буква (например, 'F')
+;        BL = значение бита (0 или 1)
+;        CX = смещение, добавляемое к DI после вывода
+;        ES:DI = текущая позиция в видеопамяти
+; Exit:  DI увеличен на (6 + CX) байт
+; Destr: AX, DI, CX, BL
+;-------------------------------------------------------------------------------
+PrintFlag proc
+        push ax
 
-;//FIXME дописать документацию
+        mov ah, ATTR_NORMAL
+        stosw                   ; выводим первую букву
+
+        pop ax
+        mov al, ah
+        mov ah, ATTR_NORMAL
+        stosw                   ; выводим вторую букву
+
+        mov al, SYM_EQU
+        mov ah, ATTR_NORMAL
+        stosw
+
+        mov al, bl              ; значение бита (0 или 1)
+        add al, '0'             ; преобразуем в символ
+        mov ah, ATTR_NORMAL
+        stosw
+
+        add di, cx
+        ret
+PrintFlag endp
+
+;===============================================================================
+; Новый обработчик прерывания таймера (8-ое)
+; Включается только после нажатия "ё". Выводит в рамке значения всех регистров
+; и флагов прерванной программы.
+;===============================================================================
 New08_tyt_yzhe_ne_skataesh proc
             push ax bx cx dx si di bp ds es ss
 
@@ -238,13 +284,14 @@ New08_tyt_yzhe_ne_skataesh proc
                             ; [bp+24] = flags
 
             cmp byte ptr cs:[show_flag], 0
-            jne @@display_registers
+            jne @@display_info
             jmp @@skip_display
-@@display_registers:
+@@display_info:
             push VIDEOSEGMENT
             pop es
             call DrawFrame
 
+            ;~~~ ПЕРВЫЙ СТОЛБЕЦ ~~~~~~~~~~~~~~~~~~~~~~~~
             mov di, (80d*5+15d)*2                   ;выводим где-то в середине
 
             mov bx, [bp+18]   ; AX
@@ -267,7 +314,7 @@ New08_tyt_yzhe_ne_skataesh proc
             mov ah, 'X'
             call PrintReg
 
-            ;;~~~ ВТОРОЙ СТОЛБЕЦ ~~~
+            ;~~~ ВТОРОЙ СТОЛБЕЦ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~
             mov di, (80d*5+25d)*2
 
             mov bx, [bp+4]    ; DS
@@ -290,7 +337,7 @@ New08_tyt_yzhe_ne_skataesh proc
             mov ah, 'S'
             call PrintReg
 
-            ; --- ТРЕТИЙ СТОЛБЕЦ ---
+            ; ~~~ ТРЕТИЙ СТОЛБЕЦ ~~~~~~~~~~~~~~~~~~~~~~~~~~~
             mov di, (80d*5+35d)*2
 
             mov bx, [bp+10]   ; SI
@@ -318,7 +365,7 @@ New08_tyt_yzhe_ne_skataesh proc
             mov ah, 'P'
             call PrintReg
 
-            ; --- ЧЕТВЁРТЫЙ СТОЛБЕЦ (IP) ---
+            ; ~~~ ЧЕТВЁРТЫЙ СТОЛБЕЦ (IP) ~~~~~~~~~~~~~~~~~~
             mov di, (80d*5+45d)*2
 
             mov bx, [bp+20]   ; IP
@@ -326,7 +373,7 @@ New08_tyt_yzhe_ne_skataesh proc
             mov ah, 'P'
             call PrintReg
 
-            ; --- ПЯТЫЙ СТОЛБЕЦ (флаги) ---
+            ; ~~~ ПЯТЫЙ СТОЛБЕЦ (флаги) ~~~~~~~~~~~~~~~~~~~~
             mov di, (80d*5+55d)*2
             mov ax, [bp+24]
             push ax                      ; сохраняем в стеке, так как будем многократно использовать
@@ -334,136 +381,91 @@ New08_tyt_yzhe_ne_skataesh proc
             ; CF (бит 0)
             pop ax
             push ax
-            mov bx, ax
-            and bx, 1
-            add bl, '0'
-            mov ax, (ATTR_NORMAL shl 8) or SYM_C
-            stosw
-            mov ax, (ATTR_NORMAL shl 8) or SYM_F
-            stosw
-            mov ax, (ATTR_NORMAL shl 8) or SYM_EQU
-            stosw
-            mov al, bl
-            stosw
-            add di, 2
+            mov bl, al
+            and bl, 1
+            mov cx, SCREEN_WIDTH_IN_BYTES - 8
+            mov al, 'C'
+            mov ah, 'F'
+            call PrintFlag
+
+            ; ZF
+            pop ax
+            push ax
+            mov bl, al
+            shr bl, 6
+            and bl, 1
+            mov cx, SCREEN_WIDTH_IN_BYTES - 8
+            mov al, 'Z'
+            mov ah, 'F'
+            call PrintFlag
+
+            ; SF
+            pop ax
+            push ax
+            mov bl, al
+            shr bl, 7
+            and bl, 1
+            mov cx, SCREEN_WIDTH_IN_BYTES - 8
+            mov al, 'S'
+            mov ah, 'F'
+            call PrintFlag
+
+            ; OF
+            pop ax
+            push ax
+            mov bl, al
+            shr bl, 11
+            and bl, 1
+            mov cx, SCREEN_WIDTH_IN_BYTES - 8   ; (если нужен переход, иначе 0)
+            mov al, 'O'
+            mov ah, 'F'
+            call PrintFlag
+
+            ;~~~ ШЕСТОЙ СТОЛБЕЦ ~~~~~~~~~~~~~~~~~~~~~~~~~~~
+            mov di, (80d*5+60d)*2
 
             ; PF (бит 2)
             pop ax
             push ax
-            mov bx, ax
-            shr bx, 2
-            and bx, 1
-            add bl, '0'
-            mov ax, (ATTR_NORMAL shl 8) or SYM_P
-            stosw
-            mov ax, (ATTR_NORMAL shl 8) or SYM_F
-            stosw
-            mov ax, (ATTR_NORMAL shl 8) or SYM_EQU
-            stosw
-            mov al, bl
-            stosw
-            add di, SCREEN_WIDTH_IN_BYTES - 18
-
-            ; ZF (бит 6)
-            pop ax
-            push ax
-            mov bx, ax
-            shr bx, 6
-            and bx, 1
-            add bl, '0'
-            mov ax, (ATTR_NORMAL shl 8) or SYM_Z
-            stosw
-            mov ax, (ATTR_NORMAL shl 8) or SYM_F
-            stosw
-            mov ax, (ATTR_NORMAL shl 8) or SYM_EQU
-            stosw
-            mov al, bl
-            stosw
-            add di, 2
+            mov bl, al
+            shr bl, 2
+            and bl, 1
+            mov cx, SCREEN_WIDTH_IN_BYTES - 8
+            mov al, 'P'
+            mov ah, 'F'
+            call PrintFlag
 
             ; AF (бит 4)
             pop ax
             push ax
-            mov bx, ax
-            shr bx, 4
-            and bx, 1
-            add bl, '0'
-            mov ax, (ATTR_NORMAL shl 8) or SYM_A
-            stosw
-            mov ax, (ATTR_NORMAL shl 8) or SYM_F
-            stosw
-            mov ax, (ATTR_NORMAL shl 8) or SYM_EQU
-            stosw
-            mov al, bl
-            stosw
-            add di, SCREEN_WIDTH_IN_BYTES - 18
-
-            ; SF (бит 7)
-            pop ax
-            push ax
-            mov bx, ax
-            shr bx, 7
-            and bx, 1
-            add bl, '0'
-            mov ax, (ATTR_NORMAL shl 8) or SYM_S
-            stosw
-            mov ax, (ATTR_NORMAL shl 8) or SYM_F
-            stosw
-            mov ax, (ATTR_NORMAL shl 8) or SYM_EQU
-            stosw
-            mov al, bl
-            stosw
-            add di, 2
+            mov bl, al
+            shr bl, 4
+            and bl, 1
+            mov cx, SCREEN_WIDTH_IN_BYTES - 8
+            mov al, 'A'
+            mov ah, 'F'
+            call PrintFlag
 
             ; IF (бит 9)
             pop ax
             push ax
-            mov bx, ax
-            shr bx, 9
-            and bx, 1
-            add bl, '0'
-            mov ax, (ATTR_NORMAL shl 8) or SYM_I
-            stosw
-            mov ax, (ATTR_NORMAL shl 8) or SYM_F
-            stosw
-            mov ax, (ATTR_NORMAL shl 8) or SYM_EQU
-            stosw
-            mov al, bl
-            stosw
-            add di, SCREEN_WIDTH_IN_BYTES - 18
-
-            ; OF (бит 11)
-            pop ax                         ; последний раз извлекаем, не пушим обратно
-            mov bx, ax
-            shr bx, 11
-            and bx, 1
-            add bl, '0'
-            mov ax, (ATTR_NORMAL shl 8) or SYM_O
-            stosw
-            mov ax, (ATTR_NORMAL shl 8) or SYM_F
-            stosw
-            mov ax, (ATTR_NORMAL shl 8) or SYM_EQU
-            stosw
-            mov al, bl
-            stosw
-            add di, 2
+            mov bl, al
+            shr bl, 9
+            and bl, 1
+            mov cx, SCREEN_WIDTH_IN_BYTES - 8
+            mov al, 'I'
+            mov ah, 'F'
+            call PrintFlag
 
             ; DF (бит 10)
-            pop ax
-            push ax
-            mov bx, ax
-            shr bx, 10
-            and bx, 1
-            add bl, '0'
-            mov ax, (ATTR_NORMAL shl 8) or SYM_D
-            stosw
-            mov ax, (ATTR_NORMAL shl 8) or SYM_F
-            stosw
-            mov ax, (ATTR_NORMAL shl 8) or SYM_EQU
-            stosw
-            mov al, bl
-            stosw
-            add di, SCREEN_WIDTH_IN_BYTES - 18
+            pop ax                    ; последний раз
+            mov bl, al
+            shr bl, 10
+            and bl, 1
+            mov cx, SCREEN_WIDTH_IN_BYTES - 8
+            mov al, 'D'
+            mov ah, 'F'
+            call PrintFlag
 
                                                         ; функция
 @@skip_display:
@@ -479,6 +481,13 @@ old08Seg:   dw 0
 
             endp
 
+;===============================================================================
+; Новый обработчик прерывания клавиатуры (9-ое)
+; Реагирует на нажатия:
+;   "ё"   — включает отображение регистров (и подменяет функцию восьмого прерывания при первом нажатии)
+;   "="   — выключает отображение и очищает экран
+; Все нажатия передаются старому обработчику.
+;===============================================================================
 New09       proc
             push ax bx cx dx si di bp ds es ss
             mov bp, sp
@@ -531,7 +540,8 @@ New09       endp
 
 flag08inst db 0          ; 0 - ещё не установлен, 1 - уже установлен
 show_flag  db 0          ; 1 - таблица должна отображаться
-                         ;высота рамки 4, перегруппировать регистры
-                         ; что-то не то с сегментными регистрами
+                         ; //ДЕЛО СДЕЛАНО высота рамки 4, перегруппировать регистры
+                         ; //ДЕЛО СДЕЛАНО (проверил, всё так) что-то не то с сегментными регистрами
+                         ; //ДЕЛО СДЕЛАНО создал функции PrintReg и PrintFlag, которые сделали код компактнее
 EOP:
 end         Start
