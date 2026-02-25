@@ -3,6 +3,8 @@
 .code
 org 100h
 
+VIDEOSEGMENT     equ 0b800h
+
 ATTR_NORMAL      equ 0Fh          ; белый на чёрном
 COLOR_GREEN      equ 02h
 
@@ -33,10 +35,12 @@ BOX_BOTTOM_RIGHT equ 0BCh   ; ╝
 BOX_HORIZ        equ 0CDh   ; ═
 BOX_VERT         equ 0BAh   ; ║
 
+SCREEN_WIDTH_IN_BYTES equ 160
+
 FRAME_TOP    equ 4
-FRAME_BOTTOM equ 10
+FRAME_BOTTOM equ 9
 FRAME_LEFT   equ 14
-FRAME_RIGHT  equ 54
+FRAME_RIGHT  equ 64
 
 Start:
             mov ax, 3509h
@@ -91,7 +95,7 @@ HexOut      proc
             and bx, 0Fh
             cmp bl, 10
             jb  @@digit
-            add bl, 'A' - 10
+            add bl, 'A' - 10            ;Для 15: 15 + (65 - 10) = 70 -> 'F'
             jmp @@store
 @@digit:
             add bl, '0'
@@ -109,11 +113,11 @@ HexOut      endp
 ; Entry:       ...
 ; Exit:        Область экрана внутри рамки заполнена пробелами.
 ; Expected:    ...
-; Destr:       AX, BX, CX, DX, SI, DI, ES, DS //FIXME (если сохраняет и восстанавливает все, то нужно ли их сюда писать)
+; Destr:       ...
 ;--------------------------------------------------------------------------------
 ClearTable proc
             push ax bx cx dx si di ds es
-            push 0b800h
+            push VIDEOSEGMENT
             pop es
             mov ax, (ATTR_NORMAL shl 8) or ' '
             mov di, (FRAME_TOP*80 + FRAME_LEFT)*2
@@ -122,7 +126,7 @@ ClearTable proc
             push bx
             mov cx, FRAME_RIGHT - FRAME_LEFT + 1
             rep stosw
-            add di, 160 - (FRAME_RIGHT - FRAME_LEFT + 1)*2
+            add di, SCREEN_WIDTH_IN_BYTES - (FRAME_RIGHT - FRAME_LEFT + 1)*2
             pop bx
             dec bx
             jnz @@next_row
@@ -136,12 +140,12 @@ ClearTable proc
 ; Entry:       ...
 ; Exit:        На экране появляется зелёная рамка.
 ; Expected:    ...
-; Destr:       AX, BX, CX, DX, SI, DI, ES, DS (сохраняет и восстанавливает все) //FIXME
+; Destr:       ...
 ;--------------------------------------------------------------------------------
 DrawFrame   proc
             push ax bx cx dx si di ds es
             call ClearTable
-            push 0b800h
+            push VIDEOSEGMENT
             pop es
             mov ah, COLOR_GREEN
 
@@ -164,25 +168,25 @@ DrawFrame   proc
             stosw
 
             mov al, BOX_VERT
-            mov di, (FRAME_TOP*80 + FRAME_LEFT)*2 + 160
+            mov di, (FRAME_TOP*80 + FRAME_LEFT)*2 + SCREEN_WIDTH_IN_BYTES
             mov cx, FRAME_BOTTOM - FRAME_TOP - 1
 @@left:
             stosw
-            add di, 160-2
+            add di, SCREEN_WIDTH_IN_BYTES - 2
             loop @@left
 
-            mov di, (FRAME_TOP*80 + FRAME_RIGHT)*2 + 160
+            mov di, (FRAME_TOP*80 + FRAME_RIGHT)*2 + SCREEN_WIDTH_IN_BYTES
             mov cx, FRAME_BOTTOM - FRAME_TOP - 1
 @@right:
             stosw
-            add di, 160 - 2
+            add di, SCREEN_WIDTH_IN_BYTES - 2
             loop @@right
 
             pop es ds di si dx cx bx ax
             ret
             endp
 
-//FIXME дописать документацию
+;//FIXME дописать документацию
 New08_tyt_yzhe_ne_skataesh proc
             push ax bx cx dx si di bp ds es ss
 
@@ -206,7 +210,7 @@ New08_tyt_yzhe_ne_skataesh proc
             jne @@display_registers
             jmp @@skip_display
 @@display_registers:
-            push 0b800h
+            push VIDEOSEGMENT
             pop es
             call DrawFrame
 
@@ -221,7 +225,7 @@ New08_tyt_yzhe_ne_skataesh proc
             stosw
             mov bx, [bp+18]
             call HexOut
-            add di, 160-14                          ; переход на след строку
+            add di, SCREEN_WIDTH_IN_BYTES-14                          ; переход на след строку
 
             ; --- BX ---
             mov ax, (ATTR_NORMAL shl 8) or SYM_B
@@ -232,7 +236,7 @@ New08_tyt_yzhe_ne_skataesh proc
             stosw
             mov bx, [bp+16]
             call HexOut
-            add di, 160-14
+            add di, SCREEN_WIDTH_IN_BYTES-14
 
             ; --- CX ---
             mov ax, (ATTR_NORMAL shl 8) or SYM_C
@@ -243,7 +247,7 @@ New08_tyt_yzhe_ne_skataesh proc
             stosw
             mov bx, [bp+14]
             call HexOut
-            add di, 160-14
+            add di, SCREEN_WIDTH_IN_BYTES-14
 
             ; --- DX ---
             mov ax, (ATTR_NORMAL shl 8) or SYM_D
@@ -254,43 +258,10 @@ New08_tyt_yzhe_ne_skataesh proc
             stosw
             mov bx, [bp+12]
             call HexOut
-            add di, 160-14
-
-            ; --- SI---
-            mov ax, (ATTR_NORMAL shl 8) or SYM_S
-            stosw
-            mov ax, (ATTR_NORMAL shl 8) or SYM_I
-            stosw
-            mov ax, (ATTR_NORMAL shl 8) or SYM_EQU
-            stosw
-            mov bx, [bp+10]
-            call HexOut
-            add di, 160-14
+            add di, SCREEN_WIDTH_IN_BYTES-14
 
             ;;~~~ ВТОРОЙ СТОЛБЕЦ ~~~
             mov di, (80d*5+25d)*2
-
-            ; DI
-            mov ax, (ATTR_NORMAL shl 8) or SYM_D
-            stosw
-            mov ax, (ATTR_NORMAL shl 8) or SYM_I
-            stosw
-            mov ax, (ATTR_NORMAL shl 8) or SYM_EQU
-            stosw
-            mov bx, [bp+8]
-            call HexOut
-            add di, 160-14       ; переход на следующую строку (правая колонка)
-
-            ; BP
-            mov ax, (ATTR_NORMAL shl 8) or SYM_B
-            stosw
-            mov ax, (ATTR_NORMAL shl 8) or SYM_P
-            stosw
-            mov ax, (ATTR_NORMAL shl 8) or SYM_EQU
-            stosw
-            mov bx, [bp+6]
-            call HexOut
-            add di, 160-14
 
             ; DS
             mov ax, (ATTR_NORMAL shl 8) or SYM_D
@@ -301,7 +272,7 @@ New08_tyt_yzhe_ne_skataesh proc
             stosw
             mov bx, [bp+4]
             call HexOut
-            add di, 160-14
+            add di, SCREEN_WIDTH_IN_BYTES-14
 
             ; ES
             mov ax, (ATTR_NORMAL shl 8) or SYM_E
@@ -312,7 +283,7 @@ New08_tyt_yzhe_ne_skataesh proc
             stosw
             mov bx, [bp+2]
             call HexOut
-            add di, 160-14
+            add di, SCREEN_WIDTH_IN_BYTES-14
 
             ; SS
             mov ax, (ATTR_NORMAL shl 8) or SYM_S
@@ -323,9 +294,53 @@ New08_tyt_yzhe_ne_skataesh proc
             stosw
             mov bx, [bp]
             call HexOut
+            add di, SCREEN_WIDTH_IN_BYTES-14
+
+            ; CS
+            mov ax, (ATTR_NORMAL shl 8) or SYM_C
+            stosw
+            mov ax, (ATTR_NORMAL shl 8) or SYM_S
+            stosw
+            mov ax, (ATTR_NORMAL shl 8) or SYM_EQU
+            stosw
+            mov bx, [bp+22]
+            call HexOut
 
             ; --- ТРЕТИЙ СТОЛБЕЦ ---
             mov di, (80d*5+35d)*2
+
+            ; --- SI---
+            mov ax, (ATTR_NORMAL shl 8) or SYM_S
+            stosw
+            mov ax, (ATTR_NORMAL shl 8) or SYM_I
+            stosw
+            mov ax, (ATTR_NORMAL shl 8) or SYM_EQU
+            stosw
+            mov bx, [bp+10]
+            call HexOut
+            add di, SCREEN_WIDTH_IN_BYTES-14
+
+            ; DI
+            mov ax, (ATTR_NORMAL shl 8) or SYM_D
+            stosw
+            mov ax, (ATTR_NORMAL shl 8) or SYM_I
+            stosw
+            mov ax, (ATTR_NORMAL shl 8) or SYM_EQU
+            stosw
+            mov bx, [bp+8]
+            call HexOut
+            add di, SCREEN_WIDTH_IN_BYTES-14       ; переход на следующую строку (правая колонка)
+
+            ; BP
+            mov ax, (ATTR_NORMAL shl 8) or SYM_B
+            stosw
+            mov ax, (ATTR_NORMAL shl 8) or SYM_P
+            stosw
+            mov ax, (ATTR_NORMAL shl 8) or SYM_EQU
+            stosw
+            mov bx, [bp+6]
+            call HexOut
+            add di, SCREEN_WIDTH_IN_BYTES-14
 
             ; SP (исходный указатель стека)
             ; если бы просто вывели текущий SP, то получили бы адрес, указывающий на последний помещённый в стек элемент,
@@ -340,19 +355,10 @@ New08_tyt_yzhe_ne_skataesh proc
             mov bx, bp
             add bx, 26          ; bp + 20 (наши push) + 6 (автоматические)
             call HexOut
-            add di, 160-14
+            add di, SCREEN_WIDTH_IN_BYTES-14
 
-            ; CS
-            mov ax, (ATTR_NORMAL shl 8) or SYM_C
-            stosw
-            mov ax, (ATTR_NORMAL shl 8) or SYM_S
-            stosw
-            mov ax, (ATTR_NORMAL shl 8) or SYM_EQU
-            stosw
-            mov bx, [bp+22]
-            call HexOut
-            add di, 160-14
-
+            ; --- ЧЕТВЁРТЫЙ СТОЛБЕЦ (IP) ---
+            mov di, (80d*5+45d)*2
             ; IP
             mov ax, (ATTR_NORMAL shl 8) or SYM_I
             stosw
@@ -363,8 +369,8 @@ New08_tyt_yzhe_ne_skataesh proc
             mov bx, [bp+20]
             call HexOut
 
-                        ; --- ЧЕТВЁРТЫЙ СТОЛБЕЦ (флаги) ---
-            mov di, (80d*5+45d)*2
+            ; --- ПЯТЫЙ СТОЛБЕЦ (флаги) ---
+            mov di, (80d*5+55d)*2
             mov ax, [bp+24]
             push ax                      ; сохраняем в стеке, так как будем многократно использовать
 
@@ -399,24 +405,7 @@ New08_tyt_yzhe_ne_skataesh proc
             stosw
             mov al, bl
             stosw
-            add di, 160-18                 ; переход на следующую строку с учётом выведенных символов
-
-            ; AF (бит 4)
-            pop ax
-            push ax
-            mov bx, ax
-            shr bx, 4
-            and bx, 1
-            add bl, '0'
-            mov ax, (ATTR_NORMAL shl 8) or SYM_A
-            stosw
-            mov ax, (ATTR_NORMAL shl 8) or SYM_F
-            stosw
-            mov ax, (ATTR_NORMAL shl 8) or SYM_EQU
-            stosw
-            mov al, bl
-            stosw
-            add di, 2
+            add di, SCREEN_WIDTH_IN_BYTES - 18
 
             ; ZF (бит 6)
             pop ax
@@ -433,7 +422,24 @@ New08_tyt_yzhe_ne_skataesh proc
             stosw
             mov al, bl
             stosw
-            add di, 160-18
+            add di, 2
+
+            ; AF (бит 4)
+            pop ax
+            push ax
+            mov bx, ax
+            shr bx, 4
+            and bx, 1
+            add bl, '0'
+            mov ax, (ATTR_NORMAL shl 8) or SYM_A
+            stosw
+            mov ax, (ATTR_NORMAL shl 8) or SYM_F
+            stosw
+            mov ax, (ATTR_NORMAL shl 8) or SYM_EQU
+            stosw
+            mov al, bl
+            stosw
+            add di, SCREEN_WIDTH_IN_BYTES - 18
 
             ; SF (бит 7)
             pop ax
@@ -452,23 +458,6 @@ New08_tyt_yzhe_ne_skataesh proc
             stosw
             add di, 2
 
-            ; TF (бит 8)
-            pop ax
-            push ax
-            mov bx, ax
-            shr bx, 8
-            and bx, 1
-            add bl, '0'
-            mov ax, (ATTR_NORMAL shl 8) or SYM_T
-            stosw
-            mov ax, (ATTR_NORMAL shl 8) or SYM_F
-            stosw
-            mov ax, (ATTR_NORMAL shl 8) or SYM_EQU
-            stosw
-            mov al, bl
-            stosw
-            add di, 160-18
-
             ; IF (бит 9)
             pop ax
             push ax
@@ -477,6 +466,22 @@ New08_tyt_yzhe_ne_skataesh proc
             and bx, 1
             add bl, '0'
             mov ax, (ATTR_NORMAL shl 8) or SYM_I
+            stosw
+            mov ax, (ATTR_NORMAL shl 8) or SYM_F
+            stosw
+            mov ax, (ATTR_NORMAL shl 8) or SYM_EQU
+            stosw
+            mov al, bl
+            stosw
+            add di, SCREEN_WIDTH_IN_BYTES - 18
+
+            ; OF (бит 11)
+            pop ax                         ; последний раз извлекаем, не пушим обратно
+            mov bx, ax
+            shr bx, 11
+            and bx, 1
+            add bl, '0'
+            mov ax, (ATTR_NORMAL shl 8) or SYM_O
             stosw
             mov ax, (ATTR_NORMAL shl 8) or SYM_F
             stosw
@@ -501,23 +506,9 @@ New08_tyt_yzhe_ne_skataesh proc
             stosw
             mov al, bl
             stosw
-            add di, 160-18
+            add di, SCREEN_WIDTH_IN_BYTES - 18
 
-            ; OF (бит 11)
-            pop ax                         ; последний раз извлекаем, не пушим обратно
-            mov bx, ax
-            shr bx, 11
-            and bx, 1
-            add bl, '0'
-            mov ax, (ATTR_NORMAL shl 8) or SYM_O
-            stosw
-            mov ax, (ATTR_NORMAL shl 8) or SYM_F
-            stosw
-            mov ax, (ATTR_NORMAL shl 8) or SYM_EQU
-            stosw
-            mov al, bl
-            stosw
-
+                                                        ; функция
 @@skip_display:
             mov al, 20h
             out 20h, al
@@ -583,6 +574,7 @@ New09       endp
 
 flag08inst db 0          ; 0 - ещё не установлен, 1 - уже установлен
 show_flag  db 0          ; 1 - таблица должна отображаться
-
+                         ;высота рамки 4, перегруппировать регистры
+                         ; что-то не то с сегментными регистрами
 EOP:
 end         Start
