@@ -64,10 +64,6 @@ Start:
             mov es:[bx+2], ax                   ;+2, так как у нас little-endian
             sti
 
-            dd  90909090h
-            int 08h
-            dd  90909090h
-
             mov ax, 3100h                       ; функция DOS 31h (завершить программу, оставив её в памяти (TSR))
             mov dx, offset EOP
 
@@ -186,6 +182,41 @@ DrawFrame   proc
             ret
             endp
 
+PrintReg proc
+
+        push ax
+        push bx
+        push cx
+        push dx
+
+        push ax
+
+        mov ah, ATTR_NORMAL
+        stosw
+
+        pop ax
+
+        mov al, ah
+        mov ah, ATTR_NORMAL
+        stosw
+
+        mov al, SYM_EQU
+        mov ah, ATTR_NORMAL
+        stosw
+
+        call HexOut
+
+        add di, SCREEN_WIDTH_IN_BYTES - 14
+
+        pop dx
+        pop cx
+        pop bx
+        pop ax
+        ret
+
+        endp
+
+
 ;//FIXME дописать документацию
 New08_tyt_yzhe_ne_skataesh proc
             push ax bx cx dx si di bp ds es ss
@@ -216,158 +247,84 @@ New08_tyt_yzhe_ne_skataesh proc
 
             mov di, (80d*5+15d)*2                   ;выводим где-то в середине
 
-            ; --- АХ ---
-            mov ax, (ATTR_NORMAL shl 8) or SYM_A
-            stosw
-            mov ax, (ATTR_NORMAL shl 8) or SYM_X
-            stosw
-            mov ax, (ATTR_NORMAL shl 8) or SYM_EQU
-            stosw
-            mov bx, [bp+18]
-            call HexOut
-            add di, SCREEN_WIDTH_IN_BYTES-14                          ; переход на след строку
+            mov bx, [bp+18]   ; AX
+            mov al, 'A'
+            mov ah, 'X'
+            call PrintReg
 
-            ; --- BX ---
-            mov ax, (ATTR_NORMAL shl 8) or SYM_B
-            stosw
-            mov ax, (ATTR_NORMAL shl 8) or SYM_X
-            stosw
-            mov ax, (ATTR_NORMAL shl 8) or SYM_EQU
-            stosw
-            mov bx, [bp+16]
-            call HexOut
-            add di, SCREEN_WIDTH_IN_BYTES-14
+            mov bx, [bp+16]   ; BX
+            mov al, 'B'
+            mov ah, 'X'
+            call PrintReg
 
-            ; --- CX ---
-            mov ax, (ATTR_NORMAL shl 8) or SYM_C
-            stosw
-            mov ax, (ATTR_NORMAL shl 8) or SYM_X
-            stosw
-            mov ax, (ATTR_NORMAL shl 8) or SYM_EQU
-            stosw
-            mov bx, [bp+14]
-            call HexOut
-            add di, SCREEN_WIDTH_IN_BYTES-14
+            mov bx, [bp+14]   ; CX
+            mov al, 'C'
+            mov ah, 'X'
+            call PrintReg
 
-            ; --- DX ---
-            mov ax, (ATTR_NORMAL shl 8) or SYM_D
-            stosw
-            mov ax, (ATTR_NORMAL shl 8) or SYM_X
-            stosw
-            mov ax, (ATTR_NORMAL shl 8) or SYM_EQU
-            stosw
-            mov bx, [bp+12]
-            call HexOut
-            add di, SCREEN_WIDTH_IN_BYTES-14
+            mov bx, [bp+12]   ; DX
+            mov al, 'D'
+            mov ah, 'X'
+            call PrintReg
 
             ;;~~~ ВТОРОЙ СТОЛБЕЦ ~~~
             mov di, (80d*5+25d)*2
 
-            ; DS
-            mov ax, (ATTR_NORMAL shl 8) or SYM_D
-            stosw
-            mov ax, (ATTR_NORMAL shl 8) or SYM_S
-            stosw
-            mov ax, (ATTR_NORMAL shl 8) or SYM_EQU
-            stosw
-            mov bx, [bp+4]
-            call HexOut
-            add di, SCREEN_WIDTH_IN_BYTES-14
+            mov bx, [bp+4]    ; DS
+            mov al, 'D'
+            mov ah, 'S'
+            call PrintReg
 
-            ; ES
-            mov ax, (ATTR_NORMAL shl 8) or SYM_E
-            stosw
-            mov ax, (ATTR_NORMAL shl 8) or SYM_S
-            stosw
-            mov ax, (ATTR_NORMAL shl 8) or SYM_EQU
-            stosw
-            mov bx, [bp+2]
-            call HexOut
-            add di, SCREEN_WIDTH_IN_BYTES-14
+            mov bx, [bp+2]    ; ES
+            mov al, 'E'
+            mov ah, 'S'
+            call PrintReg
 
-            ; SS
-            mov ax, (ATTR_NORMAL shl 8) or SYM_S
-            stosw
-            mov ax, (ATTR_NORMAL shl 8) or SYM_S
-            stosw
-            mov ax, (ATTR_NORMAL shl 8) or SYM_EQU
-            stosw
-            mov bx, [bp]
-            call HexOut
-            add di, SCREEN_WIDTH_IN_BYTES-14
+            mov bx, [bp]      ; SS
+            mov al, 'S'
+            mov ah, 'S'
+            call PrintReg
 
-            ; CS
-            mov ax, (ATTR_NORMAL shl 8) or SYM_C
-            stosw
-            mov ax, (ATTR_NORMAL shl 8) or SYM_S
-            stosw
-            mov ax, (ATTR_NORMAL shl 8) or SYM_EQU
-            stosw
-            mov bx, [bp+22]
-            call HexOut
+            mov bx, [bp+22]   ; CS
+            mov al, 'C'
+            mov ah, 'S'
+            call PrintReg
 
             ; --- ТРЕТИЙ СТОЛБЕЦ ---
             mov di, (80d*5+35d)*2
 
-            ; --- SI---
-            mov ax, (ATTR_NORMAL shl 8) or SYM_S
-            stosw
-            mov ax, (ATTR_NORMAL shl 8) or SYM_I
-            stosw
-            mov ax, (ATTR_NORMAL shl 8) or SYM_EQU
-            stosw
-            mov bx, [bp+10]
-            call HexOut
-            add di, SCREEN_WIDTH_IN_BYTES-14
+            mov bx, [bp+10]   ; SI
+            mov al, 'S'
+            mov ah, 'I'
+            call PrintReg
 
-            ; DI
-            mov ax, (ATTR_NORMAL shl 8) or SYM_D
-            stosw
-            mov ax, (ATTR_NORMAL shl 8) or SYM_I
-            stosw
-            mov ax, (ATTR_NORMAL shl 8) or SYM_EQU
-            stosw
-            mov bx, [bp+8]
-            call HexOut
-            add di, SCREEN_WIDTH_IN_BYTES-14       ; переход на следующую строку (правая колонка)
+            mov bx, [bp+8]    ; DI
+            mov al, 'D'
+            mov ah, 'I'
+            call PrintReg
 
-            ; BP
-            mov ax, (ATTR_NORMAL shl 8) or SYM_B
-            stosw
-            mov ax, (ATTR_NORMAL shl 8) or SYM_P
-            stosw
-            mov ax, (ATTR_NORMAL shl 8) or SYM_EQU
-            stosw
-            mov bx, [bp+6]
-            call HexOut
-            add di, SCREEN_WIDTH_IN_BYTES-14
+            mov bx, [bp+6]    ; BP
+            mov al, 'B'
+            mov ah, 'P'
+            call PrintReg
 
             ; SP (исходный указатель стека)
             ; если бы просто вывели текущий SP, то получили бы адрес, указывающий на последний помещённый в стек элемент,
             ; а не исходное значение SP прерванной программы.
             ; чтобы восстановить исходный SP, нужно прибавить к текущему SP (он = BP) количество байт, помещённых в стек с момента прерывания
-            mov ax, (ATTR_NORMAL shl 8) or SYM_S
-            stosw
-            mov ax, (ATTR_NORMAL shl 8) or SYM_P
-            stosw
-            mov ax, (ATTR_NORMAL shl 8) or SYM_EQU
-            stosw
             mov bx, bp
-            add bx, 26          ; bp + 20 (наши push) + 6 (автоматические)
-            call HexOut
-            add di, SCREEN_WIDTH_IN_BYTES-14
+            add bx, 26        ; SP (восстановленное значение)
+            mov al, 'S'
+            mov ah, 'P'
+            call PrintReg
 
             ; --- ЧЕТВЁРТЫЙ СТОЛБЕЦ (IP) ---
             mov di, (80d*5+45d)*2
-            ; IP
-            mov ax, (ATTR_NORMAL shl 8) or SYM_I
-            stosw
-            mov ax, (ATTR_NORMAL shl 8) or SYM_P
-            stosw
-            mov ax, (ATTR_NORMAL shl 8) or SYM_EQU
-            stosw
-            mov bx, [bp+20]
-            call HexOut
+
+            mov bx, [bp+20]   ; IP
+            mov al, 'I'
+            mov ah, 'P'
+            call PrintReg
 
             ; --- ПЯТЫЙ СТОЛБЕЦ (флаги) ---
             mov di, (80d*5+55d)*2
