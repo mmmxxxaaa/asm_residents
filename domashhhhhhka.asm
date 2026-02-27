@@ -4,7 +4,7 @@
 org 100h
 
 VIDEOSEGMENT     equ 0b800h
-command_string_len_addr         equ 80h
+COMMAND_STRING_LEN_ADDR         equ 80h
 
 
 ATTR_NORMAL      equ 0Fh          ; белый на чёрном
@@ -47,13 +47,15 @@ FRAME_RIGHT  equ 64
 Start:
                 call GetCommandLine
                 jc @@continue
-                mov al, [si]
-                mov [frame_top_left], al
-                mov [frame_top_right], al
-                mov [frame_bottom_left], al
-                mov [frame_bottom_right], al
-                mov [frame_horiz], al
-                mov [frame_vert], al
+
+                ; SI указывает на первый символ командной строки, CX = длина
+                mov di, offset frame_top_left
+                cmp cx, 6
+                jbe @@copy_all
+                mov cx, 6                     ; копируем не более 6 символов
+@@copy_all:
+                rep movsb
+
 @@continue:
                 mov ax, 3509h
                 int 21h
@@ -89,13 +91,13 @@ Start:
 ;	       to its text, skips heading space (if it exists)
 ; Entry:       NO
 ; Exit:        String NOT empty: CF = 0, CX = length, SI = the first symbol addr
-;	       String IS  empty: CF = 1, CX and SI not stated
+;	       String IS  empty: CF = 1, CX and SI are not stated
 ; Expected:    NO
 ; Destr:       CX, SI
 ;--------------------------------------------------------------------------------
 GetCommandLine proc
 
-	        mov si, command_string_len_addr
+	        mov si, COMMAND_STRING_LEN_ADDR
 	        mov cl, [si]
 	        mov ch, 0					;CX = length
 	        cmp cl, 0
@@ -112,8 +114,8 @@ GetCommandLine proc
 		jmp @@skip_spaces
 
 @@no_space:
-		clc 			;CF=0 - success
-		ret
+                clc
+                ret
 
 @@empty:
 		stc				; CF=1 - empty string
@@ -588,11 +590,11 @@ flag08inst      db 0          ; 0 - ещё не установлен, 1 - уже
 show_flag       db 0          ; 1 - таблица должна отображаться
 
 frame_top_left      db BOX_TOP_LEFT
+frame_horiz         db BOX_HORIZ
 frame_top_right     db BOX_TOP_RIGHT
+frame_vert          db BOX_VERT
 frame_bottom_left   db BOX_BOTTOM_LEFT
 frame_bottom_right  db BOX_BOTTOM_RIGHT
-frame_horiz         db BOX_HORIZ
-frame_vert          db BOX_VERT
 
                               ; //ДЕЛО СДЕЛАНО высота рамки 4, перегруппировать регистры
                               ; //ДЕЛО СДЕЛАНО (проверил, всё так) что-то не то с сегментными регистрами
