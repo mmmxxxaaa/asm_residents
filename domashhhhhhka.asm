@@ -62,11 +62,10 @@ Start:
                 mov word ptr cs:[old09Ofs], bx
                 mov word ptr cs:[old09Seg], es
 
-                mov ax, 3508h                       ; AH = 35h (получить вектор), AL = 08h (номер прерывания)
-                int 21h                             ; возвращает ES:BX = старый вектор
-                mov word ptr offset old08Ofs, bx
-                mov bx, es
-                mov word ptr offset old08Seg, bx    ; сохранили смещение и сегмент
+                mov ax, 3508h                           ; AH = 35h (получить вектор), AL = 08h (номер прерывания)
+                int 21h                                 ; возвращает ES:BX = старый вектор
+                mov word ptr cs:[old08Ofs], bx          ; если тут через offset, то
+                mov word ptr cs:[old08Seg], es          ; сохранили смещение и сегмент
 
                 ; --- устанавливаем свой обработчик ---
                 push 0
@@ -188,10 +187,6 @@ ClearTable      proc
 ; Expected:    ...
 ; Destr:       ...
 ;--------------------------------------------------------------------------------
-;//FIXME на эту функцию особое внимание, потому что за эту функцию будет оценка за первое задание
-;//FIXME надо сделать так чтобы хотя бы что-то читалось из командной строки (либо цвет, либо символ рамки).
-;        так как это резидентная прога, то можно просто в командную строку написать символ и тогда дефолтные меняются на него
-;        BOX_TOP_LEFT_DEFAULT и BOX_TOP_LEFT_USER
 DrawFrame       proc
                 push ax bx cx dx si di ds es
 
@@ -200,7 +195,7 @@ DrawFrame       proc
                 pop es
                 mov ah, COLOR_GREEN
 
-                push cs                                 ;чтобы к переменным нормально обращаться
+                push cs                                                 ;чтобы к переменным нормально обращаться
                 pop  ds
 
                 mov di, (FRAME_TOP*80 + FRAME_LEFT)*2
@@ -345,8 +340,8 @@ New08_tyt_yzhe_ne_skataesh proc
                 jmp @@skip_display
 @@display_info:
                 push VIDEOSEGMENT
-                 pop es
-                 call DrawFrame
+                pop es
+                call DrawFrame
 
                 ;~~~ ПЕРВЫЙ СТОЛБЕЦ ~~~~~~~~~~~~~~~~~~~~~~~~
                 mov di, (80d*5+15d)*2                   ;выводим где-то в середине
@@ -596,8 +591,5 @@ frame_vert          db BOX_VERT
 frame_bottom_left   db BOX_BOTTOM_LEFT
 frame_bottom_right  db BOX_BOTTOM_RIGHT
 
-                              ; //ДЕЛО СДЕЛАНО высота рамки 4, перегруппировать регистры
-                              ; //ДЕЛО СДЕЛАНО (проверил, всё так) что-то не то с сегментными регистрами
-                              ; //ДЕЛО СДЕЛАНО создал функции PrintReg и PrintFlag, которые сделали код компактнее
 EOP:
 end         Start
