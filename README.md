@@ -114,5 +114,6 @@ end			Start
 
 Before starting this test program install the resident program and turn on the frame with registers (press "ё"). Then start the test program.
 This example verifies that the resident program reads and displays all registers accurately.
+
 ![Resident at work](images/interrupt_exmpl.gif)
 
