@@ -83,8 +83,16 @@ Let's write the simple program with the infinite loop to check, how does the pro
 org 100h
 
 Start:
+			jmp output
+
+db 673h dup (90h)
 
 permanent:
+			inc ax
+			dec ax
+			jmp permanent
+
+output:
 			mov bx, 02222h
 			mov cx, 03333h
 			mov dx, 04444h
@@ -107,9 +115,11 @@ permanent:
 			mov sp, 0CCCCh
 
 			mov ax, 01111h
+
 			jmp permanent
 
 end			Start
+
 ```
 
 Before starting this test program install the resident program and turn on the frame with registers (press "ё"). Then start the test program.

@@ -83,32 +83,43 @@ regs.com 123456789
 org 100h
 
 Start:
+			jmp output
+
+db 673h dup (90h)
+
 permanent:
-            mov bx, 02222h
-            mov cx, 03333h
-            mov dx, 04444h
+			inc ax
+			dec ax
+			jmp permanent
 
-            mov ax, 05555h
-            push ax
-            pop ds
+output:
+			mov bx, 02222h
+			mov cx, 03333h
+			mov dx, 04444h
 
-            mov ax, 06666h
-            push ax
-            pop es
+			mov ax, 05555h
+			push ax
+			pop ds
 
-            mov ax, 07777h
-            push ax
-            pop ss
+			mov ax, 06666h
+			push ax
+			pop es
 
-            mov si, 09999h
-            mov di, 0AAAAh
-            mov bp, 0BBBBh
-            mov sp, 0CCCCh
+			mov ax, 07777h
+			push ax
+			pop ss
 
-            mov ax, 01111h
-            jmp permanent
+			mov si, 09999h
+			mov di, 0AAAAh
+			mov bp, 0BBBBh
+			mov sp, 0CCCCh
 
-end Start
+			mov ax, 01111h
+
+			jmp permanent
+
+end			Start
+
 ```
 
 Перед запуском этой тестовой программы установите резидентную программу и включите отображение рамки
