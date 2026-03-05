@@ -3,8 +3,8 @@
 .code
 org 100h
 
-VIDEOSEGMENT     equ 0b800h
-COMMAND_STRING_LEN_ADDR         equ 80h
+VIDEOSEGMENT            equ 0b800h
+COMMAND_STRING_LEN_ADDR equ 80h
 
 ATTR_NORMAL      equ 0Fh          ; белый на чёрном
 COLOR_GREEN      equ 02h
@@ -44,81 +44,7 @@ FRAME_LEFT   equ 14
 FRAME_RIGHT  equ 64
 
 Start:
-                call GetCommandLine
-                jc @@continue
-
-                                                ; SI указывает на первый символ командной строки, CX = длина
-                mov di, offset frame_top_left
-                cmp cx, 6
-                jbe @@copy_all
-                mov cx, 6                       ; копируем не более 6 символов
-@@copy_all:
-                rep movsb
-
-@@continue:
-                mov ax, 3509h                           ; AH = 35h (получить вектор), AL = 09h (номер прерывания)
-                int 21h                                 ; возвращает ES:BX = старый вектор
-                mov word ptr cs:[old09Ofs], bx
-                mov word ptr cs:[old09Seg], es
-
-                mov ax, 3508h                           ; AH = 35h (получить вектор), AL = 08h (номер прерывания)
-                int 21h                                 ; возвращает ES:BX = старый вектор
-                mov word ptr cs:[old08Ofs], bx          ; если тут через offset, то
-                mov word ptr cs:[old08Seg], es          ; сохранили смещение и сегмент
-
-                ; --- устанавливаем свой обработчик ---
-                push 0
-                pop es                              ;ES = 0 (сегмент таблицы векторов прерываний)
-                mov bx, 4*09h                       ;смещение вектора 09h в таблице (каждый вектор 4 байта)
-                cli
-                mov es:[bx], offset New09           ;запишем смещение нового обработчика
-                mov ax, cs
-                mov es:[bx+2], ax                   ;+2, так как у нас little-endian
-                sti
-
-                mov ax, 3100h                       ; функция DOS 31h (завершить программу, оставив её в памяти (TSR))
-                mov dx, offset EOP
-
-                add dx, 15                          ; округление вверх до параграфа
-                shr dx, 4
-
-                int 21h
-
-;-------------------------------------------------------------------------------
-; Description: Takes length of command line and pointer
-;	       to its text, skips heading space (if it exists)
-; Entry:       NO
-; Exit:        String NOT empty: CF = 0, CX = length, SI = the first symbol addr
-;	       String IS  empty: CF = 1, CX and SI are not stated
-; Expected:    NO
-; Destr:       CX, SI
-;--------------------------------------------------------------------------------
-GetCommandLine proc
-
-	        mov si, COMMAND_STRING_LEN_ADDR
-	        mov cl, [si]
-	        mov ch, 0					;CX = length
-	        cmp cl, 0
-	        je @@empty
-
-		inc si
-@@skip_spaces:
-		cmp byte ptr [si], ' '
-		jne @@no_space
-		inc si
-		dec cx
-		cmp cx, 0
-		je @@empty
-		jmp @@skip_spaces
-
-@@no_space:
-                clc
-                ret
-
-@@empty:
-		stc				; CF=1 - empty string
-		ret
-GetCommandLine  endp
+                jmp Init
 
 ;-------------------------------------------------------------------------------
 ; Descr:    Выводит 16-битное значение из BX в шестнадцатеричном виде
@@ -139,7 +65,7 @@ HexOut          proc
                 and bx, 0Fh                 ; оставляет только младшие 4 бита
                 cmp bl, 10
                 jb  @@digit
-                add bl, 'A' - 10            ;Для 15: 15 + (65 - 10) = 70 -> 'F'
+                add bl, 'A' - 10            ; Для 15: 15 + (65 - 10) = 70 -> 'F'
                 jmp @@store
 @@digit:
                 add bl, '0'
@@ -147,7 +73,7 @@ HexOut          proc
                 mov ax, bx
                 mov ah, 0Fh
                 stosw
-                shl dx, 4
+                shl dx, 4                    ; убираем уже обработанный старший полубайт и подтягиваем следующий на его место
                 loop @@next_digit
                 ret
 HexOut          endp
@@ -246,11 +172,6 @@ DrawFrame       proc
 ;-------------------------------------------------------------------------------
 PrintReg        proc
 
-                push ax
-                push bx
-                push cx
-                push dx
-
                 push ax                 ; сохранили буквы на потом
 
                 mov ah, ATTR_NORMAL
@@ -270,10 +191,6 @@ PrintReg        proc
 
                 add di, SCREEN_WIDTH_IN_BYTES - 14  ; (2 буквы [4 байта] '=' [2 байта]  4 цифры [8 байт]. Итого 14 байт)
 
-                pop dx
-                pop cx
-                pop bx
-                pop ax
                 ret
 
                 endp
@@ -581,6 +498,7 @@ old09Seg:       dw 0
 
 New09           endp
 
+
 flag08inst      db 0          ; 0 - ещё не установлен, 1 - уже установлен
 show_flag       db 0          ; 1 - таблица должна отображаться
 
@@ -591,5 +509,82 @@ frame_vert          db BOX_VERT
 frame_bottom_left   db BOX_BOTTOM_LEFT
 frame_bottom_right  db BOX_BOTTOM_RIGHT
 
-EOP:
+ResidentEnd:
+
+Init:
+                call GetCommandLine
+                jc @@continue
+                                                ; SI указывает на первый символ командной строки, CX = длина
+                mov di, offset frame_top_left
+                cmp cx, 6
+                jbe @@copy_all
+                mov cx, 6                       ; копируем не более 6 символов
+@@copy_all:
+                rep movsb                       ; move string byte из [DS:SI] в [ES:DI]
+
+@@continue:
+                mov ax, 3509h                           ; AH = 35h (получить вектор), AL = 09h (номер прерывания)
+                int 21h                                 ; возвращает ES:BX = старый вектор
+                mov word ptr cs:[old09Ofs], bx
+                mov word ptr cs:[old09Seg], es
+
+                mov ax, 3508h
+                int 21h
+                mov word ptr cs:[old08Ofs], bx
+                mov word ptr cs:[old08Seg], es
+
+                ; --- устанавливаем свой обработчик ---
+                push 0
+                pop es                              ;ES = 0 (сегмент таблицы векторов прерываний)
+                mov bx, 4*09h                       ;смещение вектора 09h в таблице (каждый вектор 4 байта)
+                cli
+                mov es:[bx], offset New09           ;запишем смещение нового обработчика
+                mov ax, cs
+                mov es:[bx+2], ax                   ;+2, так как у нас little-endian
+                sti
+
+                mov ax, 3100h                       ; функция DOS 31h (завершить программу, оставив её в памяти (TSR))
+                mov dx, offset ResidentEnd
+
+                add dx, 15                          ; округление вверх до параграфа
+                shr dx, 4
+
+                int 21h
+
+;-------------------------------------------------------------------------------
+; Description: Takes length of command line and pointer
+;	           to its text, skips heading space (if it exists)
+; Entry:       NO
+; Exit:        String NOT empty: CF = 0, CX = length, SI = the first symbol addr
+;	           String IS  empty: CF = 1, CX and SI are not stated
+; Expected:    NO
+; Destr:       CX, SI
+;--------------------------------------------------------------------------------
+GetCommandLine proc
+
+	            mov si, COMMAND_STRING_LEN_ADDR
+	            mov cl, [si]
+	            mov ch, 0					;CX = length
+	            cmp cl, 0
+	            je @@empty
+
+		        inc si
+@@skip_spaces:
+		        cmp byte ptr [si], ' '
+		        jne @@no_space
+		        inc si
+		        dec cx
+		        cmp cx, 0
+		        je @@empty
+		        jmp @@skip_spaces
+
+@@no_space:
+                clc
+                ret
+
+@@empty:
+		        stc				; CF=1 - empty string
+		        ret
+GetCommandLine  endp
+
 end         Start
