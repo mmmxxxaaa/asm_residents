@@ -11,15 +11,15 @@ Supposed to be ran on DOSBox.
 ## Build
 For compilation use **Turbo Assembler (TASM)**:
 ```powershell
-tasm domashhhhhhka.asm
-tlink /t domashhhhhhka.obj
+tasm regs.asm
+tlink /t regs.obj
 ```
 
 ## Run program
 
 ### Format
 ```powershell
-domashhhhhhka.com <FrameStyleSymbols (optional)>
+regs.com <FrameStyleSymbols (optional)>
 ```
 
 #### Command line parameters
@@ -38,7 +38,7 @@ You can change the characters used to draw the frame using this order:
 ##### Example 1
 If you run the program without command line arguments and press "ё", it will draw a frame using standard borders style.
 ```powershell
-domashhhhhhka.com
+regs.com
 ```
 ![Example 1](images/ex_1.jpg)
 
@@ -46,14 +46,14 @@ domashhhhhhka.com
 ##### Example 2
 If you run the program with 1-5 command line arguments and press "ё", it will draw a frame using a mix of user-provided symbols and default ones.
 ```powershell
-domashhhhhhka.com 1234
+regs.com 1234
 ```
 ![Example 2](images/ex_2.jpg)
 
 ##### Example 3.1
 If you run the program with 6 command line arguments and press "ё" it will draw a frame using only user-provided symbols.
 ```powershell
-domashhhhhhka.com 123456
+regs.com 123456
 ```
 ![Example 3.1](images/ex_3_1.jpg)
 
@@ -61,7 +61,7 @@ domashhhhhhka.com 123456
 This example shows that the program ignores symbols after the sixth.
 If you run the program with more than 6 command line arguments and press "ё", it still draws a frame using only user-provided symbols.
 ```powershell
-domashhhhhhka.com 123456789
+regs.com 123456789
 ```
 ![Example 3.2](images/ex_3_2.jpg)
 
