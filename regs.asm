@@ -12,22 +12,7 @@ COLOR_GREEN      equ 02h
 SCANCODE_YO      equ 029h
 SCANCODE_EQUAL   equ 0Dh
 
-SYM_A   equ 'A'
-SYM_B   equ 'B'
-SYM_C   equ 'C'
-SYM_D   equ 'D'
-SYM_E   equ 'E'
-SYM_F   equ 'F'
-SYM_I   equ 'I'
-SYM_L   equ 'L'
-SYM_O   equ 'O'
-SYM_P   equ 'P'
-SYM_S   equ 'S'
-SYM_T   equ 'T'
-SYM_X   equ 'X'
-SYM_Z   equ 'Z'
-
-SYM_EQU equ '='
+KEYBOARD_PORT    equ 60h
 
 BOX_TOP_LEFT     equ 0C9h   ; ╔
 BOX_TOP_RIGHT    equ 0BBh   ; ╗
@@ -55,21 +40,21 @@ FRAME_RIGHT  equ 64
 ; Expected: DF = 0 (для правильной работы STOSW)
 ;--------------------------------------------------------------------------------
 PrintFlagMacro macro char1, char2, n_of_bit
-    mov bx, dx
-    shr bx, n_of_bit
-    and bl, 1
-    mov ah, ATTR_NORMAL
-    mov al, char1
-    stosw
-    mov al, char2
-    stosw
-    mov al, SYM_EQU
-    stosw
-    mov al, bl
-    add al, '0'
-    stosw
-    add di, SCREEN_WIDTH_IN_BYTES - 8
-    endm
+                mov bx, dx
+                shr bx, n_of_bit
+                and bl, 1
+                mov ah, ATTR_NORMAL
+                mov al, char1
+                stosw
+                mov al, char2
+                stosw
+                mov al, '='
+                stosw
+                mov al, bl
+                add al, '0'
+                stosw
+                add di, SCREEN_WIDTH_IN_BYTES - 8
+                endm
 
 ;-------------------------------------------------------------------------------
 ; Descr:    Макрос для вывода значения регистра в видеопамять.
@@ -82,17 +67,17 @@ PrintFlagMacro macro char1, char2, n_of_bit
 ; Expected: DF = 0 (для правильной работы STOSW)
 ;--------------------------------------------------------------------------------
 PrintRegMacro macro char1, char2
-    mov ah, ATTR_NORMAL
-    mov al, char1
-    stosw
-    mov al, char2
-    stosw
-    mov al, SYM_EQU
-    stosw
-    call HexOut
-    add di, SCREEN_WIDTH_IN_BYTES - 14  ; (2 буквы [4 байта] '=' [2 байта]  4 цифры [8 байт]. Итого 14 байт)
+                mov ah, ATTR_NORMAL
+                mov al, char1
+                stosw
+                mov al, char2
+                stosw
+                mov al, '='
+                stosw
+                call HexOut
+                add di, SCREEN_WIDTH_IN_BYTES - 14  ; (2 буквы [4 байта] '=' [2 байта]  4 цифры [8 байт]. Итого 14 байт)
 
-    endm
+                endm
 
 
 Start:
@@ -110,7 +95,6 @@ Start:
 HexOut          proc
                 mov cx, 4
                 mov dx, bx
-
 @@next_digit:
                 mov bx, dx
                 shr bx, 12                  ; получаем старший полубайт
@@ -218,7 +202,7 @@ DrawFrame       proc
 ; Включается только после нажатия "ё". Выводит в рамке значения всех регистров
 ; и флагов прерванной программы.
 ;===============================================================================
-New08_tyt_yzhe_ne_skataesh proc
+New08Interrupt proc
                 push ax bx cx dx si di bp ds es ss
 
                 mov bp, sp
@@ -257,34 +241,34 @@ New08_tyt_yzhe_ne_skataesh proc
                 mov bx, [bp+14]
                 PrintRegMacro 'C', 'X'
 
-                mov bx, [bp+12]   ; DX
+                mov bx, [bp+12]
                 PrintRegMacro 'D', 'X'
 
                 ;~~~ ВТОРОЙ СТОЛБЕЦ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~
                 mov di, (80d*5+25d)*2
 
-                mov bx, [bp+4]    ; DS
+                mov bx, [bp+4]
                 PrintRegMacro 'D', 'S'
 
-                mov bx, [bp+2]    ; ES
+                mov bx, [bp+2]
                 PrintRegMacro 'E', 'S'
 
-                mov bx, [bp]      ; SS
+                mov bx, [bp]
                 PrintRegMacro 'S', 'S'
 
-                mov bx, [bp+22]   ; CS
+                mov bx, [bp+22]
                 PrintRegMacro 'C', 'S'
 
                 ; ~~~ ТРЕТИЙ СТОЛБЕЦ ~~~~~~~~~~~~~~~~~~~~~~~~~~~
                 mov di, (80d*5+35d)*2
 
-                mov bx, [bp+10]   ; SI
+                mov bx, [bp+10]
                 PrintRegMacro 'S', 'I'
 
-                mov bx, [bp+8]    ; DI
+                mov bx, [bp+8]
                 PrintRegMacro 'D', 'I'
 
-                mov bx, [bp+6]    ; BP
+                mov bx, [bp+6]
                 PrintRegMacro 'B', 'P'
 
                 ; SP (исходный указатель стека)
@@ -292,7 +276,7 @@ New08_tyt_yzhe_ne_skataesh proc
                 ; а не исходное значение SP прерванной программы.
                 ; чтобы восстановить исходный SP, нужно прибавить к текущему SP (он = BP) количество байт, помещённых в стек с момента прерывания
                 mov bx, bp
-                add bx, 26        ; SP (восстановленное значение)
+                add bx, 26
                 PrintRegMacro 'S', 'P'
 
                 ; ~~~ ЧЕТВЁРТЫЙ СТОЛБЕЦ  ~~~~~~~~~~~~~~~~~~
@@ -338,32 +322,19 @@ old08Seg:       dw 0
 ;   "="   — выключает отображение и очищает экран
 ; Все нажатия передаются старому обработчику.
 ;===============================================================================
-New09           proc
+New09Interrupt  proc
                 push ax bx cx dx si di bp ds es ss
                 mov bp, sp
 
-                in al, 60h
+                in al, KEYBOARD_PORT
                 cmp al, SCANCODE_YO
                 je @@check_yo
                 cmp al, SCANCODE_EQUAL
                 je @@check_equal
                 jmp @@skip
-
 @@check_yo:
                 test al, 80h
                 jnz @@skip
-                cmp byte ptr cs:[flag08inst], 0
-                jne @@already_set
-                push 0
-                pop es
-                mov bx, 4*08h
-                cli
-                mov es:[bx], offset New08_tyt_yzhe_ne_skataesh
-                mov ax, cs
-                mov es:[bx+2], ax
-                sti
-                mov byte ptr cs:[flag08inst], 1
-@@already_set:
                 mov byte ptr cs:[show_flag], 1
                 jmp @@skip
 @@check_equal:
@@ -386,11 +357,10 @@ New09           proc
 old09Ofs:       dw 0
 old09Seg:       dw 0
 
-New09           endp
+New09Interrupt  endp
 
 
-flag08inst      db 0          ; 0 - ещё не установлен, 1 - уже установлен
-show_flag       db 0          ; 1 - таблица должна отображаться
+show_flag           db 0          ; 1 - таблица должна отображаться
 
 frame_top_left      db BOX_TOP_LEFT
 frame_horiz         db BOX_HORIZ
@@ -411,7 +381,6 @@ Init:
                 mov cx, 6                       ; копируем не более 6 символов
 @@copy_all:
                 rep movsb                       ; move string byte из [DS:SI] в [ES:DI]
-
 @@continue:
                 mov ax, 3509h                           ; AH = 35h (получить вектор), AL = 09h (номер прерывания)
                 int 21h                                 ; возвращает ES:BX = старый вектор
@@ -423,14 +392,24 @@ Init:
                 mov word ptr cs:[old08Ofs], bx
                 mov word ptr cs:[old08Seg], es
 
-                ; --- устанавливаем свой обработчик ---
+                ; --- устанавливаем свой обработчик 9 ---
                 push 0
                 pop es                              ;ES = 0 (сегмент таблицы векторов прерываний)
                 mov bx, 4*09h                       ;смещение вектора 09h в таблице (каждый вектор 4 байта)
                 cli
-                mov es:[bx], offset New09           ;запишем смещение нового обработчика
+                mov es:[bx], offset New09Interrupt           ;запишем смещение нового обработчика
                 mov ax, cs
                 mov es:[bx+2], ax                   ;+2, так как у нас little-endian
+                sti
+
+                ; --- устанавливаем свой обработчик 8 ---
+                push 0
+                pop es
+                mov bx, 4*08h
+                cli
+                mov es:[bx], offset New08Interrupt
+                mov ax, cs
+                mov es:[bx+2], ax
                 sti
 
                 mov ax, 3100h                       ; функция DOS 31h (завершить программу, оставив её в памяти (TSR))
