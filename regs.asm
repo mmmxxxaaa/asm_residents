@@ -43,6 +43,58 @@ FRAME_BOTTOM equ 9
 FRAME_LEFT   equ 14
 FRAME_RIGHT  equ 64
 
+;-------------------------------------------------------------------------------
+; Descr:    Макрос для вывода одного флага в видеопамять.
+; Entry:    DX = регистр флагов
+;           ES:DI = позиция в видеопамяти, куда будет выведен флаг
+;           char1, char2 = символы двух букв для названия флага
+;           bit = номер бита во флагах (0-15)
+; Exit:     DI увеличен на SCREEN_WIDTH_IN_BYTES - 8, то есть переходит на начало
+;           следующей строки в том же столбце
+; Destr:    AX, BX, DI
+; Expected: DF = 0 (для правильной работы STOSW)
+;--------------------------------------------------------------------------------
+PrintFlagMacro macro char1, char2, n_of_bit
+    mov bx, dx
+    shr bx, n_of_bit
+    and bl, 1
+    mov ah, ATTR_NORMAL
+    mov al, char1
+    stosw
+    mov al, char2
+    stosw
+    mov al, SYM_EQU
+    stosw
+    mov al, bl
+    add al, '0'
+    stosw
+    add di, SCREEN_WIDTH_IN_BYTES - 8
+    endm
+
+;-------------------------------------------------------------------------------
+; Descr:    Макрос для вывода значения регистра в видеопамять.
+; Entry:    BX = 16-битное значение для вывода в шестнадцатеричном виде
+;           ES:DI = позиция в видеопамяти, куда будет выведен флаг
+;           char1, char2 = символы двух букв для названия регистра
+; Exit:     DI увеличен на SCREEN_WIDTH_IN_BYTES - 14, то есть переходит на начало
+;           следующей строки в том же столбце
+; Destr:    AX, BX, CX, DX, DI (так как внутри вызывается HexOut)
+; Expected: DF = 0 (для правильной работы STOSW)
+;--------------------------------------------------------------------------------
+PrintRegMacro macro char1, char2
+    mov ah, ATTR_NORMAL
+    mov al, char1
+    stosw
+    mov al, char2
+    stosw
+    mov al, SYM_EQU
+    stosw
+    call HexOut
+    add di, SCREEN_WIDTH_IN_BYTES - 14  ; (2 буквы [4 байта] '=' [2 байта]  4 цифры [8 байт]. Итого 14 байт)
+
+    endm
+
+
 Start:
                 jmp Init
 
@@ -161,73 +213,6 @@ DrawFrame       proc
                 ret
                 endp
 
-;-------------------------------------------------------------------------------
-; Descr: выводит строку вида "XX=xxxx" в видеопамять по адресу ES:DI
-; Entry: AL = первая буква
-;        AH = вторая буква
-;        BX = 16-битное значение для вывода в шестнадцатеричном виде
-;        ES:DI = текущая позиция в видеопамяти
-; Exit:  DI перемещён на начало следующей строки в том же столбце
-; Destr: AX, BX, CX, DX, DI
-;-------------------------------------------------------------------------------
-PrintReg        proc
-
-                push ax                 ; сохранили буквы на потом
-
-                mov ah, ATTR_NORMAL
-                stosw                   ; выводим первую букву (из AL берем)
-
-                pop ax                  ; восстановили буквы
-
-                mov al, ah              ; передвинули вторую букву в младший байт
-                mov ah, ATTR_NORMAL
-                stosw
-
-                mov al, SYM_EQU
-                mov ah, ATTR_NORMAL
-                stosw
-
-                call HexOut
-
-                add di, SCREEN_WIDTH_IN_BYTES - 14  ; (2 буквы [4 байта] '=' [2 байта]  4 цифры [8 байт]. Итого 14 байт)
-
-                ret
-
-                endp
-
-;-------------------------------------------------------------------------------
-; Descr: выводит один флаг в формате "XX=0" или "XX=1"
-; Entry: AL = первая буква (например, 'C' для CF)
-;        AH = вторая буква (например, 'F')
-;        BL = значение бита (0 или 1)
-;        ES:DI = текущая позиция в видеопамяти
-; Exit:  DI увеличен на (6 + CX) байт
-; Destr: AX, DI, BL
-;-------------------------------------------------------------------------------
-PrintFlag       proc
-                push ax
-
-                mov ah, ATTR_NORMAL
-                stosw                   ; выводим первую букву
-
-                pop ax
-                mov al, ah
-                mov ah, ATTR_NORMAL
-                stosw                   ; выводим вторую букву
-
-                mov al, SYM_EQU
-                mov ah, ATTR_NORMAL
-                stosw
-
-                mov al, bl              ; значение бита (0 или 1)
-                add al, '0'             ; преобразуем в символ
-                mov ah, ATTR_NORMAL
-                stosw
-
-                add di, SCREEN_WIDTH_IN_BYTES - 8
-                ret
-PrintFlag       endp
-
 ;===============================================================================
 ; Новый обработчик прерывания таймера (8-ое)
 ; Включается только после нажатия "ё". Выводит в рамке значения всех регистров
@@ -263,66 +248,44 @@ New08_tyt_yzhe_ne_skataesh proc
                 ;~~~ ПЕРВЫЙ СТОЛБЕЦ ~~~~~~~~~~~~~~~~~~~~~~~~
                 mov di, (80d*5+15d)*2                   ;выводим где-то в середине
 
-                mov bx, [bp+18]   ; AX
-                mov al, 'A'
-                mov ah, 'X'
-                call PrintReg
+                mov bx, [bp+18]
+                PrintRegMacro 'A', 'X'
 
-                mov bx, [bp+16]   ; BX
-                mov al, 'B'
-                mov ah, 'X'
-                call PrintReg
+                mov bx, [bp+16]
+                PrintRegMacro 'B', 'X'
 
-                mov bx, [bp+14]   ; CX
-                mov al, 'C'
-                mov ah, 'X'
-                call PrintReg
+                mov bx, [bp+14]
+                PrintRegMacro 'C', 'X'
 
                 mov bx, [bp+12]   ; DX
-                mov al, 'D'
-                mov ah, 'X'
-                call PrintReg
+                PrintRegMacro 'D', 'X'
 
                 ;~~~ ВТОРОЙ СТОЛБЕЦ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~
                 mov di, (80d*5+25d)*2
 
                 mov bx, [bp+4]    ; DS
-                mov al, 'D'
-                mov ah, 'S'
-                call PrintReg
+                PrintRegMacro 'D', 'S'
 
                 mov bx, [bp+2]    ; ES
-                mov al, 'E'
-                mov ah, 'S'
-                call PrintReg
+                PrintRegMacro 'E', 'S'
 
                 mov bx, [bp]      ; SS
-                mov al, 'S'
-                mov ah, 'S'
-                call PrintReg
+                PrintRegMacro 'S', 'S'
 
                 mov bx, [bp+22]   ; CS
-                mov al, 'C'
-                mov ah, 'S'
-                call PrintReg
+                PrintRegMacro 'C', 'S'
 
                 ; ~~~ ТРЕТИЙ СТОЛБЕЦ ~~~~~~~~~~~~~~~~~~~~~~~~~~~
                 mov di, (80d*5+35d)*2
 
                 mov bx, [bp+10]   ; SI
-                mov al, 'S'
-                mov ah, 'I'
-                call PrintReg
+                PrintRegMacro 'S', 'I'
 
                 mov bx, [bp+8]    ; DI
-                mov al, 'D'
-                mov ah, 'I'
-                call PrintReg
+                PrintRegMacro 'D', 'I'
 
                 mov bx, [bp+6]    ; BP
-                mov al, 'B'
-                mov ah, 'P'
-                call PrintReg
+                PrintRegMacro 'B', 'P'
 
                 ; SP (исходный указатель стека)
                 ; если бы просто вывели текущий SP, то получили бы адрес, указывающий на последний помещённый в стек элемент,
@@ -330,104 +293,31 @@ New08_tyt_yzhe_ne_skataesh proc
                 ; чтобы восстановить исходный SP, нужно прибавить к текущему SP (он = BP) количество байт, помещённых в стек с момента прерывания
                 mov bx, bp
                 add bx, 26        ; SP (восстановленное значение)
-                mov al, 'S'
-                mov ah, 'P'
-                call PrintReg
+                PrintRegMacro 'S', 'P'
 
-                ; ~~~ ЧЕТВЁРТЫЙ СТОЛБЕЦ (IP) ~~~~~~~~~~~~~~~~~~
+                ; ~~~ ЧЕТВЁРТЫЙ СТОЛБЕЦ  ~~~~~~~~~~~~~~~~~~
                 mov di, (80d*5+45d)*2
 
                 mov bx, [bp+20]   ; IP
-                mov al, 'I'
-                mov ah, 'P'
-                call PrintReg
+                PrintRegMacro 'I', 'P'
 
                 ; ~~~ ПЯТЫЙ СТОЛБЕЦ (флаги) ~~~~~~~~~~~~~~~~~~~~
                 mov di, (80d*5+55d)*2
-                mov ax, [bp+24]
-                push ax                      ; сохраняем в стеке, так как будем многократно использовать
+                mov dx, [bp+24]
 
-                ; CF (бит 0)
-                pop ax
-                push ax
-                mov bl, al
-                and bl, 1
-                mov al, 'C'
-                mov ah, 'F'
-                call PrintFlag
-
-                ; ZF
-                pop ax
-                push ax
-                mov bl, al
-                shr bl, 6
-                and bl, 1
-                mov al, 'Z'
-                mov ah, 'F'
-                call PrintFlag
-
-                ; SF
-                pop ax
-                push ax
-                mov bl, al
-                shr bl, 7
-                and bl, 1
-                mov al, 'S'
-                mov ah, 'F'
-                call PrintFlag
-
-                ; OF
-                pop ax
-                push ax
-                mov bl, al
-                shr bl, 11
-                and bl, 1
-                mov al, 'O'
-                mov ah, 'F'
-                call PrintFlag
+                PrintFlagMacro 'C','F', 0
+                PrintFlagMacro 'Z','F', 6
+                PrintFlagMacro 'S','F', 7
+                PrintFlagMacro 'O','F', 11
 
                 ;~~~ ШЕСТОЙ СТОЛБЕЦ ~~~~~~~~~~~~~~~~~~~~~~~~~~~
                 mov di, (80d*5+60d)*2
 
-                ; PF (бит 2)
-                pop ax
-                push ax
-                mov bl, al
-                shr bl, 2
-                and bl, 1
-                mov al, 'P'
-                mov ah, 'F'
-                call PrintFlag
+                PrintFlagMacro 'P','F', 2
+                PrintFlagMacro 'A','F', 4
+                PrintFlagMacro 'I','F', 9
+                PrintFlagMacro 'D','F', 10
 
-                ; AF (бит 4)
-                pop ax
-                push ax
-                mov bl, al
-                shr bl, 4
-                and bl, 1
-                mov al, 'A'
-                mov ah, 'F'
-                call PrintFlag
-
-                ; IF (бит 9)
-                pop ax
-                push ax
-                mov bl, al
-                shr bl, 9
-                and bl, 1
-                mov al, 'I'
-                mov ah, 'F'
-                call PrintFlag
-
-                ; DF (бит 10)
-                pop ax                    ; последний раз
-                mov bl, al
-                shr bl, 10
-                and bl, 1
-                mov al, 'D'
-                mov ah, 'F'
-                call PrintFlag
-                                                        ; функция
 @@skip_display:
                 mov al, 20h
                 out 20h, al
@@ -577,11 +467,9 @@ GetCommandLine proc
 		        cmp cx, 0
 		        je @@empty
 		        jmp @@skip_spaces
-
 @@no_space:
                 clc
                 ret
-
 @@empty:
 		        stc				; CF=1 - empty string
 		        ret
